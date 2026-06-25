@@ -144,26 +144,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-      - name: SSH deploy to VM
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
         with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          script: |
-            # TODO 7: Restart service mlops-serve tren VM.
-            sudo systemctl restart mlops-serve
+          credentials_json: ${{ secrets.CLOUD_CREDENTIALS }}
 
-            # TODO 8: Cho server san sang roi goi curl /health de xac nhan.
-            #         Neu health check that bai sau nhieu lan thu, thoat voi exit 1.
-            sleep 5
-            for i in 1 2 3 4 5; do
-              if curl -sf http://localhost:8000/health; then
-                echo "Health check passed."
-                exit 0
-              fi
-              echo "Server chua san sang, thu lai... ($i/5)"
-              sleep 3
-            done
-            echo "Health check that bai sau 5 lan thu."
-            exit 1
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: august-lamp-499804-h3
+
+      - name: Restart service on VM
+        run: |
+          gcloud compute ssh mlops-serve \
+            --zone=us-central1-a \
+            --quiet \
+            --ssh-key-expire-after=10m \
+            --command='
+              sudo systemctl restart mlops-serve
+              sleep 5
+              for i in 1 2 3 4 5; do
+                if curl -sf http://localhost:8000/health; then
+                  echo "Health check passed."
+                  exit 0
+                fi
+                echo "Server chua san sang, thu lai... ($i/5)"
+                sleep 3
+              done
+              echo "Health check that bai sau 5 lan thu."
+              exit 1
+            '
