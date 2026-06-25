@@ -1,3 +1,4 @@
+# MLOps CI/CD pipeline - huan luyen RandomForest tren Wine Quality (Buoc 2/3)
 import mlflow
 import mlflow.sklearn
 import pandas as pd
