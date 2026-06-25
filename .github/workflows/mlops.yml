@@ -70,6 +70,18 @@ jobs:
         #         Chi pull train_phase1.csv va eval.csv (khong can train_phase2.csv).
         run: dvc pull data/train_phase1.csv data/eval.csv
 
+      - name: Configure optional remote MLflow tracking
+        run: |
+          if [ -n "${{ secrets.MLFLOW_TRACKING_URI }}" ]; then
+            echo "MLFLOW_TRACKING_URI=${{ secrets.MLFLOW_TRACKING_URI }}" >> $GITHUB_ENV
+          fi
+          if [ -n "${{ secrets.MLFLOW_TRACKING_USERNAME }}" ]; then
+            echo "MLFLOW_TRACKING_USERNAME=${{ secrets.MLFLOW_TRACKING_USERNAME }}" >> $GITHUB_ENV
+          fi
+          if [ -n "${{ secrets.MLFLOW_TRACKING_PASSWORD }}" ]; then
+            echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.MLFLOW_TRACKING_PASSWORD }}" >> $GITHUB_ENV
+          fi
+
       - name: Train model
         run: python src/train.py
 
@@ -81,6 +93,42 @@ jobs:
           ACC=$(python -c "import json; d=json.load(open('outputs/metrics.json')); print(d['accuracy'])")
           echo "accuracy=$ACC" >> $GITHUB_OUTPUT
           echo "Accuracy doc tu metrics.json: $ACC"
+
+      - name: Compare with deployed model
+        env:
+          CLOUD_BUCKET: ${{ secrets.CLOUD_BUCKET }}
+          NEW_ACC: ${{ steps.read_metrics.outputs.accuracy }}
+        run: |
+          python - <<'EOF'
+          import json
+          import os
+          import tempfile
+          from google.cloud import storage
+          from google.api_core.exceptions import NotFound
+
+          bucket_name = os.environ["CLOUD_BUCKET"]
+          new_acc = float(os.environ["NEW_ACC"])
+          client = storage.Client()
+          bucket = client.bucket(bucket_name)
+          blob = bucket.blob("models/latest/metrics.json")
+
+          try:
+              with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                  blob.download_to_filename(tmp.name)
+                  old_metrics = json.load(open(tmp.name))
+              old_acc = float(old_metrics["accuracy"])
+          except NotFound:
+              print("Chua co metrics cu tren cloud. Cho phep deploy lan dau.")
+              raise SystemExit(0)
+
+          print(f"Accuracy hien tai tren cloud: {old_acc:.4f}")
+          print(f"Accuracy moi: {new_acc:.4f}")
+          if new_acc < old_acc:
+              raise SystemExit(
+                  f"FAILED: accuracy moi {new_acc:.4f} < accuracy dang chay {old_acc:.4f}. Huy deploy."
+              )
+          print("PASSED: model moi khong kem hon model dang chay.")
+          EOF
 
       - name: Upload model to Cloud Storage
         # TODO 5: Su dung cloud SDK de upload models/model.pkl len
@@ -99,13 +147,19 @@ jobs:
           blob = bucket.blob("models/latest/model.pkl")
           blob.upload_from_filename("models/model.pkl")
           print(f"Da upload model len gs://{bucket_name}/models/latest/model.pkl")
+
+          metrics_blob = bucket.blob("models/latest/metrics.json")
+          metrics_blob.upload_from_filename("outputs/metrics.json")
+          print(f"Da upload metrics len gs://{bucket_name}/models/latest/metrics.json")
           EOF
 
       - name: Save metrics as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: metrics
-          path: outputs/metrics.json
+          name: training-outputs
+          path: |
+            outputs/metrics.json
+            outputs/report.txt
 
 
   # ---------------------------------------------------------------------------

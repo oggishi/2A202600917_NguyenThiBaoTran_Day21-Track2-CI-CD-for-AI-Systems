@@ -3,6 +3,7 @@
 #
 # Bo sieu tham so tot nhat tim duoc o Buoc 1 (cao nhat tren tap eval 500 mau):
 #   n_estimators=300, max_depth=None  ->  accuracy = 0.6820, f1 = 0.6811
+model_type: random_forest      # random_forest | gradient_boosting | logistic_regression
 n_estimators: 300
 max_depth: null            # null = khong gioi han do sau (cho cay phat trien toi da)
 min_samples_split: 2

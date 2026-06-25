@@ -77,5 +77,21 @@ minh chứng trực tiếp cho giá trị của huấn luyện liên tục: thê
 
 - [x] **Bước 1** — `src/train.py` hoàn chỉnh, 10 thí nghiệm MLflow, chọn bộ tham số tốt nhất.
 - [x] **Code Bước 2** — `src/serve.py`, `tests/test_train.py` (3 test PASS), `.github/workflows/mlops.yml` (4 jobs).
-- [ ] **Hạ tầng cloud** (cần tài khoản cá nhân của bạn): tạo bucket + VM, cấu hình DVC remote, thêm 5 GitHub Secrets, deploy. Xem `tasks/buoc-2.md`.
-- [ ] **Ảnh chụp màn hình** nộp bài: MLflow UI, Actions 4 jobs xanh, `curl /health` & `/predict`, Cloud Storage Console.
+- [x] **Hạ tầng cloud** (cần tài khoản cá nhân của bạn): tạo bucket + VM, cấu hình DVC remote, thêm 5 GitHub Secrets, deploy. Xem `tasks/buoc-2.md`.
+- [x] **Ảnh chụp màn hình** nộp bài: MLflow UI, Actions 4 jobs xanh, `curl /health` & `/predict`, Cloud Storage Console.
+
+---
+
+## 5. Bonus đã bổ sung
+
+- **Bonus 1 - DagsHub/remote MLflow**: workflow hỗ trợ các secret `MLFLOW_TRACKING_URI`,
+  `MLFLOW_TRACKING_USERNAME`, `MLFLOW_TRACKING_PASSWORD`. Khi cấu hình các secret này, các run trong
+  GitHub Actions sẽ ghi lên tracking server từ xa thay vì chỉ lưu local.
+- **Bonus 2 - Nhiều thuật toán**: `params.yaml` có `model_type`; `src/train.py` hỗ trợ
+  `random_forest`, `gradient_boosting`, `logistic_regression`.
+- **Bonus 3 - Báo cáo hiệu suất tự động**: sau mỗi lần train tạo `outputs/report.txt`, gồm confusion
+  matrix và precision/recall/F1 theo từng lớp; workflow upload file này cùng `metrics.json`.
+- **Bonus 4 - Chặn deploy nếu model mới kém hơn**: workflow tải `models/latest/metrics.json` trên cloud,
+  so sánh accuracy mới với accuracy đang chạy, và hủy deploy nếu model mới thấp hơn.
+- **Bonus 5 - Cảnh báo lệch phân phối dữ liệu**: `src/train.py` tính tỷ lệ nhãn train, in cảnh báo nếu
+  lớp nào dưới 10%, và ghi `label_distribution` vào `outputs/metrics.json`.

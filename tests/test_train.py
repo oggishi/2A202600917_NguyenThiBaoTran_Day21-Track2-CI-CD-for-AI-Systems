@@ -73,6 +73,7 @@ def test_metrics_file_created(tmp_path):
         metrics = json.load(f)
     assert "accuracy" in metrics
     assert "f1_score" in metrics
+    assert "label_distribution" in metrics
 
 
 def test_model_file_created(tmp_path):
@@ -86,3 +87,19 @@ def test_model_file_created(tmp_path):
 
     # TODO 9: Kiem tra file model ton tai
     assert os.path.exists("models/model.pkl")
+
+
+def test_report_file_created(tmp_path):
+    """Kiem tra bao cao hieu suat tu dong duoc tao sau khi huan luyen."""
+    train_path, eval_path = _make_temp_data(tmp_path)
+    train(
+        {"model_type": "random_forest", "n_estimators": 10, "max_depth": 3},
+        data_path=train_path,
+        eval_path=eval_path,
+    )
+
+    assert os.path.exists("outputs/report.txt")
+    with open("outputs/report.txt", encoding="utf-8") as f:
+        report = f.read()
+    assert "Confusion matrix" in report
+    assert "Precision/Recall/F1" in report
